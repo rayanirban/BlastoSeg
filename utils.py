@@ -2,6 +2,9 @@ from skimage.segmentation import find_boundaries
 import numpy as np
 
 
+def compute_mean() -> np.float32:
+
+    mean = np.mean()
 
 def instance_to_semantic(labels: np.array) -> np.array: 
     """Convert instance segmentation to semantic segmentation with a class for background (0), cells (1) and boundaries (2)"""
