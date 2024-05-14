@@ -39,7 +39,7 @@ class BlastoDataset(Dataset):
 
     # get the total number of samples
     def __len__(self):
-        return len(self.loaded_imgs)
+        return len(self.raw_image_list)
 
     # fetch the training sample given its index
     def __getitem__(self, idx):
@@ -51,7 +51,7 @@ class BlastoDataset(Dataset):
         mask = imread(os.path.join(self.label_dir, self.label_image_list[idx]))
         mask = mask.astype(np.int16)
         mask = instance_to_semantic(mask)
-        mask = torch.from_numpy(mask.copy())
+        mask = torch.from_numpy(mask.copy()).to(torch.long)
         image = self.img_transform(image)
 
         return image, mask
