@@ -1,11 +1,20 @@
 """How to read and load the data"""
 
 import os
+import imageio
+import matplotlib.pyplot as plt
+from matplotlib import gridspec, ticker
 import numpy as np
+from PIL import Image
 import torch
+import napari
 from tifffile import imread, imwrite
 from torch.utils.data import Dataset
-from utils import instance_to_semantic
+from torchvision import transforms
+from mpl_toolkits.axes_grid1 import make_axes_locatable
+
+from skimage.segmentation import relabel_sequential
+from scipy.optimize import linear_sum_assignment
 
 class BlastoDataset(Dataset):
     """A PyTorch dataset to load membrane labeled images and label masks"""
@@ -43,7 +52,6 @@ class BlastoDataset(Dataset):
         image = torch.from_numpy(image.copy())
         mask = imread(os.path.join(self.label_dir, self.label_image_list[idx]))
         mask = mask.astype(np.int16)
-        mask = instance_to_semantic(mask)
         mask = torch.from_numpy(mask.copy())
         image = self.img_transform(image)
 

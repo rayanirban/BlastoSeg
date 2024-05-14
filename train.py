@@ -4,7 +4,7 @@ from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
 import torch.nn as nn
 import torchvision.transforms.v2 as transforms_v2
-
+import numpy as np
 device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
 assert torch.cuda.is_available()
 
@@ -23,7 +23,6 @@ val_loader = DataLoader(val_data, batch_size = 1, shuffle=True, num_workers=8)
 
 
 unet = UNet(depth=4, in_channels=1, out_channels=1, num_fmaps=2).to(device)
-loss = nn.MSELoss()
 optimizer = torch.optim.Adam(unet.parameters())
 
 
@@ -38,6 +37,7 @@ def train(
     tb_logger=None,
     device=None,
     early_stop=False,
+    batchsize = 5
 ):
     if device is None:
         # You can pass in a device or we will default to using
@@ -56,21 +56,20 @@ def train(
 
     # iterate over the batches of this epoch
     for batch_id, (x_batch, y_batch) in enumerate(loader):
-    # move input and target to the active device (either cpu or gpu)
+        # move input and target to the active device (either cpu or gpu)
         x_batch, y_batch = x_batch.to(device), y_batch.to(device)
-
         # Loop over each slice in the batch
-        for slice_id in range(len(x_batch)):
-            x = x_batch[slice_id]  # Get input slice
-            y = y_batch[slice_id]  # Get target slice
+        for slice_id in range(0, x_batch.shape[1], batchsize):
+            x = x_batch[:, slice_id:slice_id + batchsize, ...]
+            y = y_batch[:, slice_id:slice_id + batchsize, ...]
 
-            # zero the gradients for this iteration
+            x = x.permute(1, 0, 2, 3)  # Assuming the first dimension is the batch dimension
+            y = y.permute(1, 0, 2, 3)
             optimizer.zero_grad()
 
             # apply model and calculate loss
-            prediction = model(x.unsqueeze(0))  # Assuming model expects a batch dimension
-            if prediction.shape != y.shape:
-                y = crop(y, prediction)
+            prediction = model(x)  # Assuming model expects a batch dimension
+
             if y.dtype != prediction.dtype:
                 y = y.type(prediction.dtype)
             loss = loss_function(prediction, y)
@@ -90,7 +89,6 @@ def train(
                         loss.item(),
                     )
                 )
-
             # log to tensorboard
             if tb_logger is not None:
                 step = epoch * len(loader.dataset) + batch_id * len(x_batch) + slice_id  # Adjusted step calculation
@@ -100,25 +98,25 @@ def train(
                 # check if we log images in this iteration
                 if step % log_image_interval == 0:
                     tb_logger.add_images(
-                        tag="input", img_tensor=x.unsqueeze(0).to("cpu"), global_step=step  # Assuming input requires batch dimension
+                        tag="input", img_tensor=x.to("cpu"), global_step=step  # Assuming input requires batch dimension
                     )
                     tb_logger.add_images(
-                        tag="target", img_tensor=y.unsqueeze(0).to("cpu"), global_step=step  # Assuming target requires batch dimension
+                        tag="target", img_tensor=y.to("cpu"), global_step=step  # Assuming target requires batch dimension
                     )
                     tb_logger.add_images(
                         tag="prediction",
                         img_tensor=prediction.to("cpu").detach(),
                         global_step=step,
                     )
-
             if early_stop and batch_id > 5:
                 print("Stopping test early!")
-                break 
+                break
 def validate(
     model,
     loader,
     loss_function,
     metric,
+    batchsize,
     step=None,
     tb_logger=None,
     device=None,
@@ -143,6 +141,26 @@ def validate(
     # disable gradients during validation
     with torch.no_grad():
         # iterate over validation loader and update loss and metric values
+        for x_batch, y_batch in loader:
+            # move input and target to the active device (either cpu or gpu)
+            x_batch, y_batch = x_batch.to(device), y_batch.to(device)
+            # Loop over each slice in the batch
+            for slice_id in range(0, x_batch.shape[1], batchsize):
+                x = x_batch[:, slice_id:slice_id + batchsize, ...]
+                y = y_batch[:, slice_id:slice_id + batchsize, ...]
+
+                x = x.permute(1, 0, 2, 3)  # Assuming the first dimension is the batch dimension
+                y = y.permute(1, 0, 2, 3)
+
+
+                # apply model and calculate loss
+                prediction = model(x)  # Assuming model expects a batch dimension
+                
+                if y.dtype != prediction.dtype:
+                    y = y.type(prediction.dtype)
+                val_loss += loss_function(prediction, y).item()
+                val_metric += metric(prediction > 0.5, y).item()
+
         for x, y in loader:
             x, y = x.to(device), y.to(device)
             prediction = model(x)
@@ -193,6 +211,7 @@ class DiceCoefficient(nn.Module):
         return 2 * intersection / union.clamp(min=self.eps)
 
 dice = DiceCoefficient()
+loss = nn.CrossEntropyLoss(ignore_index=1)
 logger = SummaryWriter("runs/UNet_diceloss")
 n_epochs = 40
 for epoch in range(n_epochs):
@@ -208,5 +227,5 @@ for epoch in range(n_epochs):
     )
     step = epoch * len(train_loader)
     validate(
-        unet, val_loader, loss, dice, step=step, tb_logger=logger, device=device
+        unet, val_loader, loss, dice, batchsize=5, step=step, tb_logger=logger, device=device
     )
