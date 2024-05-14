@@ -5,7 +5,8 @@ from torch.utils.tensorboard import SummaryWriter
 import torch.nn as nn
 import torchvision.transforms.v2 as transforms_v2
 import numpy as np
-device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
+#device = torch.device("cuda") if torch.cuda.is_available() else 
+device = torch.device("cpu")
 assert torch.cuda.is_available()
 
 from model import UNet
@@ -21,7 +22,7 @@ train_loader = DataLoader(train_data, batch_size=1, shuffle=True, num_workers=8)
 val_data = BlastoDataset("/group/dl4miacourse/projects/BlastoSeg/validation")
 val_loader = DataLoader(val_data, batch_size = 1, shuffle=True, num_workers=8)
 
-unet = UNet(depth=4, in_channels=1, out_channels=1, num_fmaps=2).to(device)
+unet = UNet(depth=4, in_channels=1, out_channels=4, num_fmaps=2).to(device)
 optimizer = torch.optim.Adam(unet.parameters())
 
 
@@ -42,10 +43,10 @@ def train(
         # You can pass in a device or we will default to using
         # the gpu. Feel free to try training on the cpu to see
         # what sort of performance difference there is
-        if torch.cuda.is_available():
-            device = torch.device("cuda")
-        else:
-            device = torch.device("cpu")
+        #if torch.cuda.is_available():
+        #    device = torch.device("cuda")
+        #else:
+        device = torch.device("cpu")
 
     # set the model to train mode
     model.train()
@@ -64,13 +65,14 @@ def train(
 
             x = x.permute(1, 0, 2, 3)  # Assuming the first dimension is the batch dimension
             y = y.permute(1, 0, 2, 3)
+            y = torch.squeeze(y,1)
+
             optimizer.zero_grad()
 
             # apply model and calculate loss
             prediction = model(x)  # Assuming model expects a batch dimension
 
-            if y.dtype != prediction.dtype:
-                y = y.type(prediction.dtype)
+            print(x.shape, y.shape, prediction.shape, np.unique(y.numpy()))
             loss = loss_function(prediction, y)
 
             # backpropagate the loss and adjust the parameters
@@ -141,9 +143,7 @@ def validate(
     with torch.no_grad():
         # iterate over validation loader and update loss and metric values
         for x_batch, y_batch in loader:
-            # move input and target to the active device (either cpu or gpu)
-            x_batch, y_batch = x_batch.to(device), y_batch.to(device)
-            # Loop over each slice in the batch
+            # move input and target to the activedevice
             for slice_id in range(0, x_batch.shape[1], batchsize):
                 x = x_batch[:, slice_id:slice_id + batchsize, ...]
                 y = y_batch[:, slice_id:slice_id + batchsize, ...]
@@ -155,8 +155,7 @@ def validate(
                 # apply model and calculate loss
                 prediction = model(x)  # Assuming model expects a batch dimension
                 
-                if y.dtype != prediction.dtype:
-                    y = y.type(prediction.dtype)
+
                 val_loss += loss_function(prediction, y).item()
                 val_metric += metric(prediction > 0.5, y).item()
 
