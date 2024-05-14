@@ -16,10 +16,10 @@ from dataset import (
 
 # Create training dataset
 train_data = BlastoDataset("training")
-train_loader = DataLoader(train_data, batch_size=10, shuffle=True, num_workers=8)
+train_loader = DataLoader(train_data, batch_size=1, shuffle=True, num_workers=8)
 
 val_data = BlastoDataset("validation")
-val_loader = DataLoader(val_data, batch_size = 10, shuffle=True, num_workers=8)
+val_loader = DataLoader(val_data, batch_size = 1, shuffle=True, num_workers=8)
 
 
 unet = UNet(depth=4, in_channels=1, out_channels=1, num_fmaps=2).to(device)
@@ -55,60 +55,65 @@ def train(
     model = model.to(device)
 
     # iterate over the batches of this epoch
-    for batch_id, (x, y) in enumerate(loader):
-        # move input and target to the active device (either cpu or gpu)
-        x, y = x.to(device), y.to(device)
+    for batch_id, (x_batch, y_batch) in enumerate(loader):
+    # move input and target to the active device (either cpu or gpu)
+        x_batch, y_batch = x_batch.to(device), y_batch.to(device)
 
-        # zero the gradients for this iteration
-        optimizer.zero_grad()
+        # Loop over each slice in the batch
+        for slice_id in range(len(x_batch)):
+            x = x_batch[slice_id]  # Get input slice
+            y = y_batch[slice_id]  # Get target slice
 
-        # apply model and calculate loss
-        prediction = model(x)
-        if prediction.shape != y.shape:
-            y = crop(y, prediction)
-        if y.dtype != prediction.dtype:
-            y = y.type(prediction.dtype)
-        loss = loss_function(prediction, y)
+            # zero the gradients for this iteration
+            optimizer.zero_grad()
 
-        # backpropagate the loss and adjust the parameters
-        loss.backward()
-        optimizer.step()
+            # apply model and calculate loss
+            prediction = model(x.unsqueeze(0))  # Assuming model expects a batch dimension
+            if prediction.shape != y.shape:
+                y = crop(y, prediction)
+            if y.dtype != prediction.dtype:
+                y = y.type(prediction.dtype)
+            loss = loss_function(prediction, y)
 
-        # log to console
-        if batch_id % log_interval == 0:
-            print(
-                "Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}".format(
-                    epoch,
-                    batch_id * len(x),
-                    len(loader.dataset),
-                    100.0 * batch_id / len(loader),
-                    loss.item(),
-                )
-            )
+            # backpropagate the loss and adjust the parameters
+            loss.backward()
+            optimizer.step()
 
-        # log to tensorboard
-        if tb_logger is not None:
-            step = epoch * len(loader) + batch_id
-            tb_logger.add_scalar(
-                tag="train_loss", scalar_value=loss.item(), global_step=step
-            )
-            # check if we log images in this iteration
-            if step % log_image_interval == 0:
-                tb_logger.add_images(
-                    tag="input", img_tensor=x.to("cpu"), global_step=step
-                )
-                tb_logger.add_images(
-                    tag="target", img_tensor=y.to("cpu"), global_step=step
-                )
-                tb_logger.add_images(
-                    tag="prediction",
-                    img_tensor=prediction.to("cpu").detach(),
-                    global_step=step,
+            # log to console
+            if batch_id % log_interval == 0:
+                print(
+                    "Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}".format(
+                        epoch,
+                        batch_id * len(x_batch) + slice_id,  # Adjusted index calculation
+                        len(loader.dataset),
+                        100.0 * batch_id / len(loader),
+                        loss.item(),
+                    )
                 )
 
-        if early_stop and batch_id > 5:
-            print("Stopping test early!")
-            break
+            # log to tensorboard
+            if tb_logger is not None:
+                step = epoch * len(loader.dataset) + batch_id * len(x_batch) + slice_id  # Adjusted step calculation
+                tb_logger.add_scalar(
+                    tag="train_loss", scalar_value=loss.item(), global_step=step
+                )
+                # check if we log images in this iteration
+                if step % log_image_interval == 0:
+                    tb_logger.add_images(
+                        tag="input", img_tensor=x.unsqueeze(0).to("cpu"), global_step=step  # Assuming input requires batch dimension
+                    )
+                    tb_logger.add_images(
+                        tag="target", img_tensor=y.unsqueeze(0).to("cpu"), global_step=step  # Assuming target requires batch dimension
+                    )
+                    tb_logger.add_images(
+                        tag="prediction",
+                        img_tensor=prediction.to("cpu").detach(),
+                        global_step=step,
+                    )
+
+            if early_stop and batch_id > 5:
+                print("Stopping test early!")
+                break 
 def validate(
     model,
     loader,
