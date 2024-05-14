@@ -11,7 +11,6 @@ import napari
 from torch.utils.data import Dataset
 from torchvision import transforms
 from mpl_toolkits.axes_grid1 import make_axes_locatable
-from utils import normalize
 
 from skimage.segmentation import relabel_sequential
 from scipy.optimize import linear_sum_assignment
