@@ -29,8 +29,8 @@ class BlastoDataset(Dataset):
             "/group/dl4miacourse/projects/BlastoSeg/" + root_dir
         )  # the directory with all the training samples
 
-        self.raw_dir = os.path.join(self.root_dir, 'Blastocyst_raw_256x256')
-        self.label_dir = os.path.join(self.root_dir, 'Blastocyst_GT_256x256')
+        self.raw_dir = os.path.join(self.root_dir, 'raw')
+        self.label_dir = os.path.join(self.root_dir, 'gt')
         self.samples = os.listdir(self.raw_dir)  # list the samples
 
         self.transform = (
@@ -60,8 +60,8 @@ class BlastoDataset(Dataset):
         
         # Calculate the mean and std of the intensity over all training slices
 
-        mean_int = np.mean(np.array(self.loaded_imgs), axis = 0)
-        std_int = np.std(np.array(self.loaded_imgs), axis = 0)
+        mean_int = np.mean(np.array(self.loaded_imgs))
+        std_int = np.std(np.array(self.loaded_imgs))
         print('the mean intensity is', mean_int, 'the std is', std_int)
 
         self.img_transform = img_transform  # transformations to apply to raw image only
