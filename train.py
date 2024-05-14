@@ -211,7 +211,6 @@ class DiceCoefficient(nn.Module):
 
 dice = DiceCoefficient()
 loss = nn.CrossEntropyLoss(ignore_index=1)
-logger = SummaryWriter("runs/UNet_diceloss")
 n_epochs = 40
 for epoch in range(n_epochs):
     train(
@@ -221,10 +220,9 @@ for epoch in range(n_epochs):
         loss_function=loss,
         epoch=epoch,
         log_interval=5,
-        tb_logger=logger,
         device=device,
     )
     step = epoch * len(train_loader)
     validate(
-        unet, val_loader, loss, dice, batchsize=5, step=step, tb_logger=logger, device=device
+        unet, val_loader, loss, dice, batchsize=5, step=step, device=device
     )
