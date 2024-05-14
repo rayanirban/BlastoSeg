@@ -12,6 +12,7 @@ from tifffile import imread, imwrite
 from torch.utils.data import Dataset
 from torchvision import transforms
 from mpl_toolkits.axes_grid1 import make_axes_locatable
+from utils import instance_to_semantic
 
 from skimage.segmentation import relabel_sequential
 from scipy.optimize import linear_sum_assignment
@@ -49,6 +50,7 @@ class BlastoDataset(Dataset):
         image = torch.from_numpy(image.copy())
         mask = imread(os.path.join(self.label_dir, self.label_image_list[idx]))
         mask = mask.astype(np.int16)
+        mask = instance_to_semantic(mask)
         mask = torch.from_numpy(mask.copy())
         image = self.img_transform(image)
 
