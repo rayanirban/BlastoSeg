@@ -20,10 +20,7 @@ class BlastoDataset(Dataset):
     """A PyTorch dataset to load membrane labeled images and label masks"""
 
     def __init__(self, root_dir, transform=None, img_transform=True):
-        self.root_dir = (
-            "/group/dl4miacourse/projects/BlastoSeg/" + root_dir
-        )  # the directory with all the training samples
-
+        self.root_dir = root_dir
         self.raw_dir = os.path.join(self.root_dir, 'raw')
         self.label_dir = os.path.join(self.root_dir, 'gt')
         self.samples = os.listdir(self.raw_dir)  # list the samples
