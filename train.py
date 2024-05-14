@@ -15,12 +15,11 @@ from dataset import (
 )
 
 # Create training dataset
-train_data = BlastoDataset("training")
+train_data = BlastoDataset("/group/dl4miacourse/projects/BlastoSeg/training")
 train_loader = DataLoader(train_data, batch_size=1, shuffle=True, num_workers=8)
 
-val_data = BlastoDataset("validation")
+val_data = BlastoDataset("/group/dl4miacourse/projects/BlastoSeg/validation")
 val_loader = DataLoader(val_data, batch_size = 1, shuffle=True, num_workers=8)
-
 
 unet = UNet(depth=4, in_channels=1, out_channels=1, num_fmaps=2).to(device)
 loss = nn.MSELoss()
