@@ -10,7 +10,7 @@ assert torch.cuda.is_available()
 from torchmetrics.classification import Dice, MulticlassAccuracy
 from model3d import Unet3D
 
-from dataset_dst import (
+from dataset import (
     BlastoDataset
 )
 
