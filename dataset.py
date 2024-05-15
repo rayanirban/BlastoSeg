@@ -63,3 +63,4 @@ class BlastoDataset(Dataset):
         distmap = torch.from_numpy(distmap.copy())
 
         return image, distmap, loss_mask
+
