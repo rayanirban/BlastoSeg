@@ -37,7 +37,7 @@ def train(
     device=None,
     early_stop=False,
     batchsize = 5,
-    step_size = 2
+    step_size = 1
 ):
     if device is None:
         # You can pass in a device or we will default to using
@@ -65,8 +65,8 @@ def train(
         loss = 0
         for i in range(0, num_iterations, step_size): 
 
-            start_index = i
-            end_index = min(start_index + step_size, x_batch.size(2))
+            start_index = i 
+            end_index = min(start_index + step_size, x_batch.size(1))
 
             x = x_batch[:, start_index:end_index, :, :] # [1,2,256,256] BDHW
             x = torch.unsqueeze(x, 0) # [1,1,2,256,256] BCDHW
@@ -111,19 +111,7 @@ def train(
                 tb_logger.add_scalar(
                     tag="train_loss", scalar_value=loss.item(), global_step=step
                 )
-                # # check if we log images in this iteration
-                # if step % log_image_interval == 0:
-                #     tb_logger.add_images(
-                #         tag="input", img_tensor=x.to("cpu"), global_step=step  # Assuming input requires batch dimension
-                #     )
-                #     tb_logger.add_images(
-                #         tag="target", img_tensor=y.to("cpu"), global_step=step  # Assuming target requires batch dimension
-                #     )
-                #     tb_logger.add_images(
-                #         tag="prediction",
-                #         img_tensor=prediction.to("cpu").detach(),
-                #         global_step=step,
-                #     )
+
             if early_stop and batch_id > 5:
                 print("Stopping test early!")
                 break
@@ -136,7 +124,7 @@ def validate(
     step=None,
     tb_logger=None,
     device=None,
-    step_size = 2
+    step_size = 1
 ):
     if device is None:
         # You can pass in a device or we will default to using
@@ -166,10 +154,10 @@ def validate(
             z_slices = x_batch.shape[1]
             num_iterations = int(z_slices / step_size)
             loss = 0
-            for i in range(0,num_iterations,step_size): 
+            for i in range(0,num_iterations,step_size): #59
 
                 start_index = i
-                end_index = min(start_index + step_size, x_batch.size(2))
+                end_index = min(start_index + step_size, x_batch.size(1))
 
                 x = x_batch[:, start_index:end_index, :, :] # [1,2,256,256] BDHW
                 x = torch.unsqueeze(x, 0) # [1,1,2,256,256] BCDHW
@@ -190,7 +178,7 @@ def validate(
                 val_loss += loss
 
     # normalize loss and metric
-    val_loss /= len(loader)
+    val_loss /= (len(loader) * num_iterations)
 
     if tb_logger is not None:
         assert (
@@ -227,7 +215,7 @@ class DiceCoefficient(nn.Module):
 dice = DiceCoefficient()
 loss = nn.MSELoss(reduction ='none')
 
-logger = SummaryWriter("runs/UNet_MSEloss_stepsize2")
+logger = SummaryWriter("runs/UNet_MSEloss_stepsize1_")
 n_epochs = 40
 best_val_loss = 1000
 for epoch in range(n_epochs):
@@ -249,4 +237,4 @@ for epoch in range(n_epochs):
     if current_val_loss < best_val_loss:
         # save the model
         best_val_loss = current_val_loss
-        torch.save(unet.state_dict(), '/localscratch/DL4MIA_2024/BlastoSeg/saved_models/unet3d_model_stepsize2_best.pth')
+        torch.save(unet.state_dict(), '/localscratch/DL4MIA_2024/BlastoSeg/saved_models/unet3d_model_stepsize1_best.pth')
