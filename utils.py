@@ -12,10 +12,10 @@ def napari_screen_recording(viewer, n_frames, outputdir, filename):
     current_step = viewer.dims.current_step
     frame = 0
     for i in range(0, n_frames):
-    	new_step = (i, current_step[1], current_step[2])
+        new_step = (i, current_step[1], current_step[2])
         viewer.dims.current_step = new_step
-    	viewer.screenshot(os.path.join(outputdir, f'{filename}_{frame:04}.png'), size = (644, 948))
-    	frame += 1
+        viewer.screenshot(os.path.join(outputdir, f'{filename}_{frame:04}.png'), size = (644, 948))
+        frame += 1
     
 def dice_coefficient_from_instances(gt: np.array, pred:np.array) -> List:
     """Function to compute dice coefficient per label in the ground truth"""
