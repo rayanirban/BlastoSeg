@@ -2,7 +2,21 @@ from skimage.segmentation import find_boundaries, watershed
 import numpy as np
 from scipy.ndimage import label, maximum_filter, distance_transform_edt
 from typing import List
+import os 
 
+def napari_screen_recording(viewer, n_frames, outputdir, filename):
+    """function to loop over slices or frames in the napari viewer and collect screen recordings"""   
+    if not os.path.exists(outputdir):
+      os.mkdir(outputdir)
+
+    current_step = viewer.dims.current_step
+    frame = 0
+    for i in range(0, n_frames):
+    	new_step = (i, current_step[1], current_step[2])
+        viewer.dims.current_step = new_step
+    	viewer.screenshot(os.path.join(outputdir, f'{filename}_{frame:04}.png'), size = (644, 948))
+    	frame += 1
+    
 def dice_coefficient_from_instances(gt: np.array, pred:np.array) -> List:
     """Function to compute dice coefficient per label in the ground truth"""
 
