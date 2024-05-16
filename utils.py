@@ -1,6 +1,55 @@
 from skimage.segmentation import find_boundaries, watershed
 import numpy as np
 from scipy.ndimage import label, maximum_filter, distance_transform_edt
+from typing import List
+
+def dice_coefficient_from_instances(gt: np.array, pred:np.array) -> List:
+    """Function to compute dice coefficient per label in the ground truth"""
+
+    labels = np.unique(gt)
+    labels = [l for l in labels if l > 1]
+    
+    gt = np.squeeze(gt)
+    pred = np.squeeze(pred)
+
+    dice = []
+    for l in labels: 
+        print('looking for label', l)
+        # find the corresponding region in the prediction
+        pred_label = pred.copy()
+        pred_label[gt != l] = 0
+        pred_label_values = np.unique(pred_label)
+        pred_label_values = [p for p in pred_label_values if p > 0]
+        # if there are multiple labels here, take the biggest one:
+        if len(pred_label_values) > 1:
+            sizes = {}
+            for pred_l in pred_label_values: 
+                sizes[pred_l] = (pred_label == pred_l).sum()
+            largest_label = max(zip(sizes.values(), sizes.keys()))[1]
+        elif len(pred_label_values) == 1:
+            largest_label = pred_label_values[0]
+        else:
+            print('No overlapping labels at all, the dice coeff is zero')
+            largest_label = None
+
+        
+        print('the largest corresponding predicted label is', largest_label)
+
+        if largest_label is not None: 
+            # compute the dice coefficient between the two masks      
+            gt_mask = (gt == l).astype(bool)
+            pred_mask = (pred == largest_label).astype(bool)
+
+            intersection = np.logical_and(gt_mask, pred_mask)
+            dice_coef = 2* intersection.sum() / (gt_mask.sum() + pred_mask.sum())
+
+            print('dice coefficient is', dice_coef)
+            dice.append(dice_coef)
+        
+        else: 
+            dice.append(0)
+
+    return dice
 
 def instance_to_semantic(labels: np.array) -> np.array: 
     """Convert instance segmentation to semantic segmentation with a class for background (0), cells (1) and boundaries (2)"""
